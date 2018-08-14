@@ -13,6 +13,10 @@ import com.example.dell_pc.mobilechatwebclient.other.Message;
 
 import java.util.List;
 
+/**
+ * ListView 的适配器，主要就是判断是自己的消息还是别人的消息，在 getView 中分别填充
+ * 绑定 view 和数据
+ */
 public class MessagesListAdapter extends BaseAdapter
 {
     private Context context;
@@ -24,35 +28,61 @@ public class MessagesListAdapter extends BaseAdapter
         this.messagesItems = messagesItems;
     }
 
+    /**
+     * 要绑定条目的数目
+     *
+     * @return
+     */
     @Override
     public int getCount()
     {
         return messagesItems.size();
     }
 
+    /**
+     * 根据索引获取该数据的对象
+     *
+     * @param i
+     * @return
+     */
     @Override
     public Object getItem(int i)
     {
         return messagesItems.get(i);
     }
 
+    /**
+     * 获取条目的id
+     *
+     * @param i
+     * @return
+     */
     @Override
     public long getItemId(int i)
     {
         return i;
     }
 
+    /**
+     * 获取该条目要显示的界面
+     *
+     * @param i
+     * @param view
+     * @param viewGroup
+     * @return
+     */
     @SuppressLint("InflateParams")
     @Override
     public View getView(int i, View view, ViewGroup viewGroup)
     {
-        /**
-         * The flowing list not implemented reusable list items as list items
-         * are showing incorrect data Add the solution if you have one
+        /*
+         * The following list not implemented reusable list items as list items are showing incorrect data
+         * Add the solution if you have one
          */
 
         Message m = messagesItems.get(i);
 
+//        LayoutInflater mInflater1 = LayoutInflater.from(context);
         LayoutInflater mInflater = (LayoutInflater) context.getSystemService(Activity.LAYOUT_INFLATER_SERVICE);
 
         // Identifying the message owner

@@ -1,11 +1,19 @@
 package com.example.dell_pc.mobilechatwebclient;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.location.LocationProvider;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -21,6 +29,7 @@ import com.example.dell_pc.mobilechatwebclient.other.WsConfig;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -46,6 +55,10 @@ public class MainActivity extends Activity
 
     // Client name
     private String name = null;
+
+    // location service
+    private LocationManager locationManager;
+    private EditText locationEditText;
 
     // JSON flags to identify the kind of JSON response
     private static final String
@@ -88,7 +101,39 @@ public class MainActivity extends Activity
         adapter = new MessagesListAdapter(this, listMessages);
         listViewMessages.setAdapter(adapter);
 
-        /**
+        // location service
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        locationEditText = findViewById(R.id.location);
+
+        if (!(locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)))
+        {
+            Toast.makeText(this, "请打开网络或GPS定位功能！", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+            startActivityForResult(intent, 0);
+            return;
+        }
+
+        try
+        {
+            Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            if (location == null)
+            {
+                Log.d(TAG, "onCreate.location = null");
+                location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            }
+            Log.d(TAG, "onCreate.location = " + location);
+            updateView(location);
+
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000, 5, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 3000, 5, locationListener);
+        }
+        catch (SecurityException e)
+        {
+            e.printStackTrace();
+        }
+
+        /*
          * 创建web socket客户端，有如下的回调函数
          */
         client = new WebSocketClient(URI.create(WsConfig.URL_WEBSOCKET + URLEncoder.encode(name)), new WebSocketClient.Listener()
@@ -227,11 +272,73 @@ public class MainActivity extends Activity
     @Override
     protected void onDestroy()
     {
+        try
+        {
+            locationManager.removeUpdates(locationListener);
+        }
+        catch (SecurityException e)
+        {
+
+        }
+
         super.onDestroy();
 
         if (client != null && client.isConnected())
+        {
+            showToast("disconnect");
             client.disconnect();
+        }
     }
+
+    private LocationListener locationListener = new LocationListener()
+    {
+        @Override
+        public void onLocationChanged(Location location)
+        {
+            Log.d(TAG, "onProviderDisabled.location = " + location);
+            updateView(location);
+        }
+
+        @Override
+        public void onStatusChanged(String s, int i, Bundle bundle)
+        {
+            Log.d(TAG, "onStatusChanged() called with " + "provider = [" + s + "], status = [" + i + "], extras = [" + bundle + "]");
+            switch (i)
+            {
+                case LocationProvider.AVAILABLE:
+                    Log.i(TAG, "AVAILABLE");
+                    break;
+                case LocationProvider.OUT_OF_SERVICE:
+                    Log.i(TAG, "OUT_OF_SERVICE");
+                    break;
+                case LocationProvider.TEMPORARILY_UNAVAILABLE:
+                    Log.i(TAG, "TEMPORARILY_UNAVAILABLE");
+                    break;
+            }
+        }
+
+        @Override
+        public void onProviderEnabled(String s)
+        {
+            Log.d(TAG, "onProviderEnable() called with " + "provider = [" + s + "]");
+            try
+            {
+                Location location = locationManager.getLastKnownLocation(s);
+                Log.d(TAG, "onProviderDisable.location = " + location);
+                updateView(location);
+            }
+            catch (SecurityException e)
+            {
+
+            }
+        }
+
+        @Override
+        public void onProviderDisabled(String s)
+        {
+            Log.d(TAG, "onProviderDisabled() called with " + "provider = [" + s + "]");
+        }
+    };
 
     /**
      * 把消息放到listView里
@@ -295,5 +402,41 @@ public class MainActivity extends Activity
             hexChars[i * 2 + 1] = hexArray[v & 0x0F];
         }
         return new String(hexChars);
+    }
+
+    private void updateView(Location location)
+    {
+        Geocoder gc = new Geocoder(this);
+        List<Address> addresses = null;
+        String msg = "";
+        Log.d(TAG, "updateView.location = " + location);
+        if (location != null)
+        {
+            try
+            {
+                addresses = gc.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+                Log.d(TAG, "updateView.address = " + addresses);
+                if (addresses.size() > 0)
+                {
+                    msg += addresses.get(0).getAdminArea().substring(0, 2);
+                    msg += " " + addresses.get(0).getLocality().substring(0, 2);
+                }
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+            locationEditText.setText("定位到位置：\n");
+            locationEditText.append(msg);
+            locationEditText.append("\n经度：");
+            locationEditText.append(String.valueOf(location.getLongitude()));
+            locationEditText.append("\n纬度：");
+            locationEditText.append(String.valueOf(location.getLatitude()));
+        }
+        else
+        {
+            locationEditText.getEditableText().clear();
+            locationEditText.setText("定位中");
+        }
     }
 }

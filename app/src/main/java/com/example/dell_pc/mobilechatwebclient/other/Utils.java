@@ -3,6 +3,7 @@ package com.example.dell_pc.mobilechatwebclient.other;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -10,6 +11,8 @@ import org.json.JSONObject;
 public class Utils
 {
     private Context context;
+
+    // 数据持久化
     private SharedPreferences sharedPreferences;
 
     private static final String KEY_SHARED_PREF = "ANDROID_WEB_CHAT";
@@ -44,6 +47,8 @@ public class Utils
             jObj.put("flag", FLAG_MESSAGE);
             jObj.put("sessionId", getSessionId());
             jObj.put("message", message);
+
+            json = jObj.toString();
         }
         catch (JSONException e)
         {
@@ -51,5 +56,17 @@ public class Utils
         }
 
         return json;
+    }
+
+    public static void sleep()
+    {
+        try
+        {
+            Thread.sleep(2000);
+        }
+        catch (InterruptedException e)
+        {
+            e.printStackTrace();
+        }
     }
 }

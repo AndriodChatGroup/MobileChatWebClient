@@ -30,9 +30,9 @@ public class NameActivity extends Activity
             @Override
             public void onClick(View view)
             {
-                if (txtName.getText().toString().trim().length() > 0)
+                String name;
+                if ((name = txtName.getText().toString().trim()).length() > 0)
                 {
-                    String name = txtName.getText().toString().trim();
                     Intent intent = new Intent(NameActivity.this, MainActivity.class);
                     intent.putExtra("name", name);
                     startActivity(intent);
