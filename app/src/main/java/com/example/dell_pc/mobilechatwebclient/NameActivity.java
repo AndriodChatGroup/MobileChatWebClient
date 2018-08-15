@@ -11,6 +11,8 @@ import android.widget.Toast;
 public class NameActivity extends Activity
 {
     private Button btnJoin;
+    private Button btnLocation;
+    private Button btnMap;
     private EditText txtName;
 
     @Override
@@ -20,7 +22,10 @@ public class NameActivity extends Activity
         setContentView(R.layout.activity_name);
 
         btnJoin = findViewById(R.id.btnJoin);
+        btnLocation = findViewById(R.id.btnLocation);
+        btnMap = findViewById(R.id.btnMap);
         txtName = findViewById(R.id.name);
+
 
         // Hiding the action bar
         getActionBar().hide();
@@ -39,6 +44,26 @@ public class NameActivity extends Activity
                 }
                 else
                     Toast.makeText(getApplicationContext(), "Please enter your name", Toast.LENGTH_LONG).show();
+            }
+        });
+
+        btnLocation.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View view)
+            {
+                Intent intent = new Intent(NameActivity.this, LocationActivity.class);
+                startActivity(intent);
+            }
+        });
+
+        btnMap.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View view)
+            {
+                Intent intent = new Intent(NameActivity.this, MapActivity.class);
+                startActivity(intent);
             }
         });
     }

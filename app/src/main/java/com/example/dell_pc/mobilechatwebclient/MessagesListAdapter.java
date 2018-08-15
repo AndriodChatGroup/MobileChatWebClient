@@ -9,7 +9,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 
-import com.example.dell_pc.mobilechatwebclient.other.Message;
+import com.example.dell_pc.mobilechatwebclient.client.Message;
 
 import java.util.List;
 

@@ -23,6 +23,7 @@ public class GPSDemoActivity extends Activity
     private static final String TAG = "GpsActivity";
     private LocationManager locationManager;
     private EditText editText;
+    private LocationListener locationListener = getLocationListener();
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -77,60 +78,63 @@ public class GPSDemoActivity extends Activity
         super.onDestroy();
     }
 
-    private LocationListener locationListener = new LocationListener()
+    private LocationListener getLocationListener()
     {
-        @Override
-        public void onLocationChanged(Location location)
+        return new LocationListener()
         {
-            Log.d(TAG, "onProviderDisabled.location = " + location);
-            updateView(location);
-        }
-
-        @Override
-        public void onStatusChanged(String s, int i, Bundle bundle)
-        {
-            Log.d(TAG, "onStatusChanged() called with " + "provider = [" + s + "], status = [" + i + "], extras = [" + bundle + "]");
-            switch (i)
+            @Override
+            public void onLocationChanged(Location location)
             {
-                case LocationProvider.AVAILABLE:
-                    Log.i(TAG, "AVAILABLE");
-                    break;
-                case LocationProvider.OUT_OF_SERVICE:
-                    Log.i(TAG, "OUT_OF_SERVICE");
-                    break;
-                case LocationProvider.TEMPORARILY_UNAVAILABLE:
-                    Log.i(TAG, "TEMPORARILY_UNAVAILABLE");
-                    break;
-            }
-        }
-
-        @Override
-        public void onProviderEnabled(String s)
-        {
-            Log.d(TAG, "onProviderEnable() called with " + "provider = [" + s + "]");
-            try
-            {
-                Location location = locationManager.getLastKnownLocation(s);
-                Log.d(TAG, "onProviderDisable.location = " + location);
+                Log.d(TAG, "onProviderDisabled.location = " + location);
                 updateView(location);
             }
-            catch (SecurityException e)
+
+            @Override
+            public void onStatusChanged(String s, int i, Bundle bundle)
             {
-
+                Log.d(TAG, "onStatusChanged() called with " + "provider = [" + s + "], status = [" + i + "], extras = [" + bundle + "]");
+                switch (i)
+                {
+                    case LocationProvider.AVAILABLE:
+                        Log.i(TAG, "AVAILABLE");
+                        break;
+                    case LocationProvider.OUT_OF_SERVICE:
+                        Log.i(TAG, "OUT_OF_SERVICE");
+                        break;
+                    case LocationProvider.TEMPORARILY_UNAVAILABLE:
+                        Log.i(TAG, "TEMPORARILY_UNAVAILABLE");
+                        break;
+                }
             }
-        }
 
-        @Override
-        public void onProviderDisabled(String s)
-        {
-            Log.d(TAG, "onProviderDisabled() called with " + "provider = [" + s + "]");
-        }
-    };
+            @Override
+            public void onProviderEnabled(String s)
+            {
+                Log.d(TAG, "onProviderEnable() called with " + "provider = [" + s + "]");
+                try
+                {
+                    Location location = locationManager.getLastKnownLocation(s);
+                    Log.d(TAG, "onProviderDisable.location = " + location);
+                    updateView(location);
+                }
+                catch (SecurityException e)
+                {
+
+                }
+            }
+
+            @Override
+            public void onProviderDisabled(String s)
+            {
+                Log.d(TAG, "onProviderDisabled() called with " + "provider = [" + s + "]");
+            }
+        };
+    }
 
     private void updateView(Location location)
     {
         Geocoder gc = new Geocoder(this);
-        List<Address> addresses = null;
+        List<Address> addresses;
         String msg = "";
         Log.d(TAG, "updateView.location = " + location);
         if (location != null)

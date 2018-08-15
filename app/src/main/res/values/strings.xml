@@ -6,4 +6,9 @@
     <string name = "enter_name">Enter your name</string>
     <string name = "btn_join">JOIN</string>
     <string name = "btn_send">Send</string>
+    <string name = "btn_location">LOCATION</string>
+    <string name = "btn_map">MAP</string>
+
+    <string name = "show_location">SHOW LOCATION</string>
+    <string name = "clear_location">CLEAR LOCATION</string>
 </resources>

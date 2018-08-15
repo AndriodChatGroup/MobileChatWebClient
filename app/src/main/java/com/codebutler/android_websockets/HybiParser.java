@@ -32,8 +32,6 @@ package com.codebutler.android_websockets;
 
 import android.util.Log;
 
-import com.example.dell_pc.mobilechatwebclient.other.Utils;
-
 import java.io.*;
 import java.util.Arrays;
 import java.util.List;

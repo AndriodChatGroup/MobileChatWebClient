@@ -22,9 +22,13 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.codebutler.android_websockets.WebSocketClient;
-import com.example.dell_pc.mobilechatwebclient.other.Message;
-import com.example.dell_pc.mobilechatwebclient.other.Utils;
-import com.example.dell_pc.mobilechatwebclient.other.WsConfig;
+import com.example.dell_pc.mobilechatwebclient.client.ClientUtils;
+import com.example.dell_pc.mobilechatwebclient.client.Message;
+import com.example.dell_pc.mobilechatwebclient.client.MessageType;
+import com.example.dell_pc.mobilechatwebclient.client.MessageUtils;
+import com.example.dell_pc.mobilechatwebclient.client.SessionUtils;
+import com.example.dell_pc.mobilechatwebclient.client.WsConfig;
+import com.example.dell_pc.mobilechatwebclient.utils.Utils;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -44,28 +48,23 @@ public class MainActivity extends Activity
     private Button btnSend;
     private EditText inputMsg;
 
-    private WebSocketClient client;
-
     // Chat messages list adapter
     private MessagesListAdapter adapter;
     private List<Message> listMessages;
     private ListView listViewMessages;
 
-    private Utils utils;
-
-    // Client name
-    private String name = null;
+    private SessionUtils sessionUtils;
+    private MessageUtils messageUtils;
+    private ClientUtils clientUtils;
 
     // location service
     private LocationManager locationManager;
     private EditText locationEditText;
 
-    // JSON flags to identify the kind of JSON response
-    private static final String
-            TAG_SELF = "self",
-            TAG_NEW = "new",
-            TAG_MESSAGE = "message",
-            TAG_EXIT = "exit";
+    // client name
+    String name;
+
+    private LocationListener locationListener = getLocationListener();
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -76,12 +75,15 @@ public class MainActivity extends Activity
         btnSend = findViewById(R.id.btnSend);
         inputMsg = findViewById(R.id.inputMsg);
         listViewMessages = findViewById(R.id.list_view_messages);
+        locationEditText = findViewById(R.id.location);
 
-        utils = new Utils(getApplicationContext());
+        sessionUtils = new SessionUtils(getApplicationContext());
+        messageUtils = new MessageUtils(sessionUtils);
 
         // 从上一个屏幕获取姓名
         Intent i = getIntent();
         name = i.getStringExtra("name");
+        clientUtils = new ClientUtils(getClient());
 
         btnSend.setOnClickListener(new View.OnClickListener()
         {
@@ -89,7 +91,7 @@ public class MainActivity extends Activity
             public void onClick(View view)
             {
                 // Sending message to web socket server
-                sendMessageToServer(utils.getSendMessageJSON(inputMsg.getText().toString()));
+                clientUtils.sendMessageToServer(messageUtils.getSendMessageJSON(inputMsg.getText().toString()));
 
                 // Clearing the input filed once message was sent
                 inputMsg.setText("");
@@ -103,7 +105,6 @@ public class MainActivity extends Activity
 
         // location service
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        locationEditText = findViewById(R.id.location);
 
         if (!(locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
                 || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)))
@@ -132,67 +133,58 @@ public class MainActivity extends Activity
         {
             e.printStackTrace();
         }
-
-        /*
-         * 创建web socket客户端，有如下的回调函数
-         */
-        client = new WebSocketClient(URI.create(WsConfig.URL_WEBSOCKET + URLEncoder.encode(name)), new WebSocketClient.Listener()
-        {
-            @Override
-            public void onConnect()
-            {
-
-            }
-
-            @Override
-            public void onMessage(String message)
-            {
-                Log.d(TAG, String.format("Got string message! %s", message));
-
-                parseMessage(message);
-            }
-
-            @Override
-            public void onMessage(byte[] data)
-            {
-                Log.d(TAG, String.format("Got binary message! %s", bytesToHex(data)));
-
-                // Message will be in JSON format
-                parseMessage(bytesToHex(data));
-            }
-
-            @Override
-            public void onDisconnect(int code, String reason)
-            {
-                String message = String.format(Locale.US, "Disconnected! Code: %d Reason: %s", code, reason);
-
-                showToast(message);
-
-                // clear the session id from shared preferences
-                utils.storeSessionId(null);
-            }
-
-            @Override
-            public void onError(Exception error)
-            {
-                Log.e(TAG, "Error! : " + error);
-
-                showToast("Error! : " + error);
-            }
-        }, null);
-
-        client.connect();
     }
 
-    /**
-     * Send messages
-     *
-     * @param message
-     */
-    private void sendMessageToServer(String message)
+    private WebSocketClient getClient()
     {
-        if (client != null && client.isConnected())
-            client.send(message);
+        return new WebSocketClient(
+                URI.create(WsConfig.URL_WEBSOCKET + URLEncoder.encode(name)),
+                new WebSocketClient.Listener()
+                {
+                    @Override
+                    public void onConnect()
+                    {
+
+                    }
+
+                    @Override
+                    public void onMessage(String message)
+                    {
+                        Log.d(TAG, String.format("Got string message! %s", message));
+
+                        parseMessage(message);
+                    }
+
+                    @Override
+                    public void onMessage(byte[] data)
+                    {
+                        String message = Utils.bytesToHex(data);
+                        Log.d(TAG, String.format("Got binary message! %s", message));
+
+                        // Message will be in JSON format
+                        parseMessage(message);
+                    }
+
+                    @Override
+                    public void onDisconnect(int code, String reason)
+                    {
+                        String message = String.format(Locale.US, "Disconnected! Code: %d Reason: %s", code, reason);
+
+                        showToast(message);
+
+                        // clear the session id from shared preferences
+                        sessionUtils.storeSessionId(null);
+                    }
+
+                    @Override
+                    public void onError(Exception error)
+                    {
+                        Log.e(TAG, "Error! : " + error);
+
+                        showToast("Error! : " + error);
+                    }
+                },
+                null);
     }
 
     /**
@@ -209,43 +201,39 @@ public class MainActivity extends Activity
         try
         {
             JSONObject jObj = new JSONObject(msg);
+            String flag = jObj.getString(MessageType.FIELD_FLAG);
 
-            // JSON node 'flag'
-            String flag = jObj.getString("flag");
-
-            if (flag.equalsIgnoreCase(TAG_SELF))
+            if (flag.equalsIgnoreCase(MessageType.FLAG_SELF))
             {
                 // 如果是self，json中包含sessionId信息
                 String sessionId = jObj.getString("sessionId");
 
                 // Save the session id in shared preferences
-                utils.storeSessionId(sessionId);
+                sessionUtils.storeSessionId(sessionId);
 
-                Log.e(TAG, "Your session id: " + utils.getSessionId());
+                Log.e(TAG, "Your session id: " + sessionUtils.getSessionId());
             }
-            else if (flag.equalsIgnoreCase(TAG_NEW))
+            else if (flag.equalsIgnoreCase(MessageType.FLAG_NEW))
             {
                 // If the flag is 'new', new person joined the room
-                String name = jObj.getString("name");
-                String message = jObj.getString("message");
-
-                // number of people online
-                String onlineCount = jObj.getString("onlineCount");
+                String name = jObj.getString(MessageType.FIELD_NAME);
+                String message = jObj.getString(MessageType.FIELD_MESSAGE);
+                String onlineCount = jObj.getString(MessageType.FIELD_ONLINE_COUNT);
 
                 showToast(name + message + ". Currently " + onlineCount + " people online!");
             }
-            else if (flag.equalsIgnoreCase(TAG_MESSAGE))
+            else if (flag.equalsIgnoreCase(MessageType.FLAG_MESSAGE))
             {
                 // if the flag is 'message', new message received
                 String fromName = name;
-                String message = jObj.getString("message");
-                String sessionId = jObj.getString("sessionId");
+                String message = jObj.getString(MessageType.FIELD_MESSAGE);
+                String sessionId = jObj.getString(MessageType.FIELD_SESSION_ID);
                 boolean isSelf = true;
 
                 // Checking if the message was sent by you
-                if (!sessionId.equals(utils.getSessionId()))
+                if (!sessionId.equals(sessionUtils.getSessionId()))
                 {
-                    fromName = jObj.getString("name");
+                    fromName = jObj.getString(MessageType.FIELD_NAME);
                     isSelf = false;
                 }
 
@@ -254,11 +242,11 @@ public class MainActivity extends Activity
                 // 把消息加入到arraylist中
                 appendMessage(m);
             }
-            else if (flag.equalsIgnoreCase(TAG_EXIT))
+            else if (flag.equalsIgnoreCase(MessageType.FLAG_EXIT))
             {
                 // If the flag is 'exit', somebody left the conversation
-                String name = jObj.getString("name");
-                String message = jObj.getString("message");
+                String name = jObj.getString(MessageType.FIELD_NAME);
+                String message = jObj.getString(MessageType.FIELD_MESSAGE);
 
                 showToast(name + message);
             }
@@ -283,65 +271,65 @@ public class MainActivity extends Activity
 
         super.onDestroy();
 
-        if (client != null && client.isConnected())
-        {
-            showToast("disconnect");
-            client.disconnect();
-        }
+        clientUtils.close();
     }
 
-    private LocationListener locationListener = new LocationListener()
+    private LocationListener getLocationListener()
     {
-        @Override
-        public void onLocationChanged(Location location)
+        return new LocationListener()
         {
-            Log.d(TAG, "onProviderDisabled.location = " + location);
-            updateView(location);
-        }
-
-        @Override
-        public void onStatusChanged(String s, int i, Bundle bundle)
-        {
-            Log.d(TAG, "onStatusChanged() called with " + "provider = [" + s + "], status = [" + i + "], extras = [" + bundle + "]");
-            switch (i)
+            @Override
+            public void onLocationChanged(Location location)
             {
-                case LocationProvider.AVAILABLE:
-                    Log.i(TAG, "AVAILABLE");
-                    break;
-                case LocationProvider.OUT_OF_SERVICE:
-                    Log.i(TAG, "OUT_OF_SERVICE");
-                    break;
-                case LocationProvider.TEMPORARILY_UNAVAILABLE:
-                    Log.i(TAG, "TEMPORARILY_UNAVAILABLE");
-                    break;
-            }
-        }
-
-        @Override
-        public void onProviderEnabled(String s)
-        {
-            Log.d(TAG, "onProviderEnable() called with " + "provider = [" + s + "]");
-            try
-            {
-                Location location = locationManager.getLastKnownLocation(s);
-                Log.d(TAG, "onProviderDisable.location = " + location);
+                Log.d(TAG, "onProviderDisabled.location = " + location);
                 updateView(location);
             }
-            catch (SecurityException e)
+
+            @Override
+            public void onStatusChanged(String s, int i, Bundle bundle)
             {
-
+                Log.d(TAG, "onStatusChanged() called with " + "provider = [" + s + "], status = [" + i + "], extras = [" + bundle + "]");
+                switch (i)
+                {
+                    case LocationProvider.AVAILABLE:
+                        Log.i(TAG, "AVAILABLE");
+                        break;
+                    case LocationProvider.OUT_OF_SERVICE:
+                        Log.i(TAG, "OUT_OF_SERVICE");
+                        break;
+                    case LocationProvider.TEMPORARILY_UNAVAILABLE:
+                        Log.i(TAG, "TEMPORARILY_UNAVAILABLE");
+                        break;
+                }
             }
-        }
 
-        @Override
-        public void onProviderDisabled(String s)
-        {
-            Log.d(TAG, "onProviderDisabled() called with " + "provider = [" + s + "]");
-        }
-    };
+            @Override
+            public void onProviderEnabled(String s)
+            {
+                Log.d(TAG, "onProviderEnable() called with " + "provider = [" + s + "]");
+                try
+                {
+                    Location location = locationManager.getLastKnownLocation(s);
+                    Log.d(TAG, "onProviderDisable.location = " + location);
+                    updateView(location);
+                }
+                catch (SecurityException e)
+                {
+
+                }
+            }
+
+            @Override
+            public void onProviderDisabled(String s)
+            {
+                Log.d(TAG, "onProviderDisabled() called with " + "provider = [" + s + "]");
+            }
+        };
+    }
 
     /**
      * 把消息放到listView里
+     *
      * @param m
      */
     private void appendMessage(final Message m)
@@ -390,24 +378,10 @@ public class MainActivity extends Activity
         });
     }
 
-    final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
-
-    public static String bytesToHex(byte[] bytes)
-    {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int i = 0; i < bytes.length; i++)
-        {
-            int v = bytes[i] & 0xFF;
-            hexChars[i * 2] = hexArray[v >>> 4];
-            hexChars[i * 2 + 1] = hexArray[v & 0x0F];
-        }
-        return new String(hexChars);
-    }
-
     private void updateView(Location location)
     {
         Geocoder gc = new Geocoder(this);
-        List<Address> addresses = null;
+        List<Address> addresses;
         String msg = "";
         Log.d(TAG, "updateView.location = " + location);
         if (location != null)

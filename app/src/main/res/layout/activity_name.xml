@@ -57,11 +57,33 @@
             android:id = "@+id/btnJoin"
             android:layout_width = "wrap_content"
             android:layout_height = "wrap_content"
-            android:layout_marginTop = "40dp"
+            android:layout_marginTop = "10dp"
             android:background = "@color/bg_btn_join"
             android:paddingLeft = "25dp"
             android:paddingRight = "25dp"
             android:text = "@string/btn_join"
+            android:textColor = "@color/white" />
+
+        <Button
+            android:id = "@+id/btnLocation"
+            android:layout_width = "wrap_content"
+            android:layout_height = "wrap_content"
+            android:layout_marginTop = "10dp"
+            android:background = "@color/bg_btn_join"
+            android:paddingLeft = "25dp"
+            android:paddingRight = "25dp"
+            android:text = "@string/btn_location"
+            android:textColor = "@color/white" />
+
+        <Button
+            android:id = "@+id/btnMap"
+            android:layout_width = "wrap_content"
+            android:layout_height = "wrap_content"
+            android:layout_marginTop = "10dp"
+            android:background = "@color/bg_btn_join"
+            android:paddingLeft = "25dp"
+            android:paddingRight = "25dp"
+            android:text = "@string/btn_map"
             android:textColor = "@color/white" />
     </LinearLayout>
 

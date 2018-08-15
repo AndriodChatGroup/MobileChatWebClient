@@ -6,8 +6,6 @@ import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 
-import com.example.dell_pc.mobilechatwebclient.other.Utils;
-
 import org.apache.http.*;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.message.BasicLineParser;
